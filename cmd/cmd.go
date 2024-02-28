@@ -40,11 +40,17 @@ func appCmd() *cobra.Command {
 }
 
 func sandboxCmd() *cobra.Command {
+	params := app.SandboxParams{}
 	cmd := cobra.Command{
 		Use: `sandbox`,
 		Run: func(cmd *cobra.Command, args []string) {
-			app.Sandbox()
+			app.Sandbox(params)
 		},
 	}
+	cmd.PersistentFlags().StringVar(&params.StartTime, `start-time`, `2024-02-27T00:00:00+03:00`, `начало интервала`)
+	cmd.PersistentFlags().StringVar(&params.StopTime, `stop-time`, time.Now().Format(time.RFC3339), `конец интервала`)
+	cmd.PersistentFlags().StringVar(&params.V1Addr, `v1-addr`, `http://127.0.0.1:8086`, `адрес influxdb1`)
+	cmd.PersistentFlags().StringVar(&params.V2Addr, `v2-addr`, `http://127.0.0.1:8087`, `конец influxdb2`)
+	cmd.PersistentFlags().StringVar(&params.Token, `token`, `******`, `token v2`)
 	return &cmd
 }

@@ -108,9 +108,17 @@ func Daemon(p Params) error {
 	return nil
 }
 
-func Sandbox() {
+type SandboxParams struct {
+	V1Addr    string
+	V2Addr    string
+	Token     string
+	StartTime string
+	StopTime  string
+}
+
+func Sandbox(p SandboxParams) {
 	v1config := influxdb1.HTTPConfig{
-		Addr: "http://10.243.50.19:8086",
+		Addr: p.V1Addr,
 	}
 	v1client, err := influxdb1.NewHTTPClient(v1config)
 	if err != nil {
@@ -118,18 +126,20 @@ func Sandbox() {
 	}
 	defer v1client.Close()
 
-	v2client := influxdb2.NewClient(fmt.Sprintf(`http://%s:%d`, `127.0.0.1`, 8087), `***`)
+	v2client := influxdb2.NewClient(p.V2Addr, p.Token)
 	moscowLocation, err := time.LoadLocation(`Europe/Moscow`)
 	if err != nil {
 		logrus.Fatalln(err)
 	}
-	currentTime, err := time.Parse(time.RFC3339, `2024-02-27T00:00:00+03:00`)
+	startTime, err := time.Parse(time.RFC3339, p.StartTime)
+	stopTime, err := time.Parse(time.RFC3339, p.StopTime)
+	currentTime := startTime
 	if err != nil {
 		logrus.Fatalln(err)
 	}
 	for {
 		nextTime := currentTime.Add(time.Minute * 1)
-		if time.Now().Sub(nextTime).Minutes() < 1 {
+		if stopTime.Unix() > time.Now().Unix() {
 			break
 		}
 		sql := fmt.Sprintf("SELECT last(value) FROM mqtt_consumer WHERE time >= '%s' AND time <= '%s' GROUP BY topic ORDER BY time\n", currentTime.Format(time.RFC3339), nextTime.Format(time.RFC3339))
@@ -143,7 +153,6 @@ func Sandbox() {
 		}
 		for _, item := range response.Results {
 			for _, serie := range item.Series {
-				//logrus.Infoln(serie.Tags, serie.Values)
 				topic, ok := serie.Tags[`topic`]
 				if !ok {
 					logrus.Fatalln(`invalid topic`)
@@ -174,14 +183,8 @@ func Sandbox() {
 			}
 		}
 		currentTime = nextTime
-		//fmt.Printf("INSERT INTO mqtt_consumer(time,topic,value,hour) VALUES('%s', '_topic_name_', _value_, %d)\n", nextTime.Format(time.RFC3339), nextTime.Hour())
 
 	}
 	return
-
-	//
-	//if err != nil {
-	//	logrus.Fatalln(err)
-	//}
 
 }
