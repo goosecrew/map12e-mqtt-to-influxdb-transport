@@ -50,6 +50,10 @@ var connectLostHandler mqtt.ConnectionLostHandler = func(client mqtt.Client, err
 
 func sub(client mqtt.Client, slaveID, channel, suffix string) {
 	topic := fmt.Sprintf("/devices/wb-map12e_%s/controls/Ch %s %s", slaveID, channel, suffix)
+	moscowLocation, err := time.LoadLocation(`Europe/Moscow`)
+	if err != nil {
+		logrus.Fatalln(err)
+	}
 	token := client.Subscribe(topic, 1, func(client mqtt.Client, message mqtt.Message) {
 		if v64, err := strconv.ParseFloat(string(message.Payload()), 10); err != nil {
 			logrus.Errorln(errors.Wrap(err, `mqtt received topic values convert to integer error`))
@@ -57,14 +61,15 @@ func sub(client mqtt.Client, slaveID, channel, suffix string) {
 			if v64 > 0 {
 				metric := cache.GetOrCreateMetric(message.Topic())
 				if metric.Set(v64) {
-					logrus.Infof(`%s: %f`, message.Topic(), v64)
+					//logrus.Infof(`%s: %f`, message.Topic(), v64)
 					writeAPI := db.WriteAPIBlocking(params.InfluxDBOrg, params.InfluxDBBucket)
 					now := time.Now()
 					p := influxdb2.NewPointWithMeasurement(params.InfluxDBMeasurement).
 						AddTag("topic", message.Topic()).
 						AddField("value", v64).
-						AddField("hour", now.Hour()).
+						AddField("hour", now.In(moscowLocation).Hour()).
 						SetTime(now)
+					logrus.Infof(`%s write topic=%s, value=%f, hour=%d`, now, message.Topic(), v64, now.In(moscowLocation).Hour())
 					if err := writeAPI.WritePoint(ctx, p); err != nil {
 						logrus.Errorln(err)
 					}
@@ -112,11 +117,19 @@ func Sandbox() {
 		logrus.Fatalln(err)
 	}
 	defer v1client.Close()
-	v2client := influxdb2.NewClient(fmt.Sprintf(`http://%s:%d`, `sandbox-pgusev02a.dev.sandbox.amosrv.ru`, 8086), `i_Co5e-N7TA1cfT3cw7z1SHwQJdIABqD_-vDLPWZZKgo9l_uAOsFnDtnEGmJxgBl4gTD33CUnmTdREmVfuOp1Q==`)
-	currentTime, err := time.Parse(time.RFC3339, `2023-04-19T00:00:00+03:00`)
+
+	v2client := influxdb2.NewClient(fmt.Sprintf(`http://%s:%d`, `127.0.0.1`, 8087), `***`)
+	moscowLocation, err := time.LoadLocation(`Europe/Moscow`)
+	if err != nil {
+		logrus.Fatalln(err)
+	}
+	currentTime, err := time.Parse(time.RFC3339, `2024-02-27T00:00:00+03:00`)
+	if err != nil {
+		logrus.Fatalln(err)
+	}
 	for {
-		nextTime := currentTime.Add(time.Minute * 30)
-		if nextTime.Month() == 3 {
+		nextTime := currentTime.Add(time.Minute * 1)
+		if time.Now().Sub(nextTime).Minutes() < 1 {
 			break
 		}
 		sql := fmt.Sprintf("SELECT last(value) FROM mqtt_consumer WHERE time >= '%s' AND time <= '%s' GROUP BY topic ORDER BY time\n", currentTime.Format(time.RFC3339), nextTime.Format(time.RFC3339))
@@ -147,17 +160,16 @@ func Sandbox() {
 				if err != nil {
 					logrus.Fatalln(`invalid value`, value)
 				}
-				writeAPI := v2client.WriteAPIBlocking(`migration`, `v1`)
+				writeAPI := v2client.WriteAPIBlocking(`mqtt`, `wirenboard`)
 				p := influxdb2.NewPointWithMeasurement(`map12e`).
 					AddTag("topic", topic).
 					AddField("value", v64).
-					AddField("hour", t.Hour()).
+					AddField("hour", t.In(moscowLocation).Hour()).
 					SetTime(t)
 				if err := writeAPI.WritePoint(ctx, p); err != nil {
-					logrus.Fatalln(errors.Wrapf(err, `FAILED write topic=%s, value=%f, hour=%d`, topic, v64, t.Hour()))
-					//logrus.Infoln(fmt.Sprintf(`))
+					logrus.Fatalln(errors.Wrapf(err, `FAILED write topic=%s, value=%f, hour=%d`, topic, v64, t.In(moscowLocation).Hour()))
 				} else {
-					logrus.Infoln(fmt.Sprintf(`%s SUCCESS write topic=%s, value=%f, hour=%d`, t, topic, v64, t.Hour()))
+					logrus.Infoln(fmt.Sprintf(`%s SUCCESS write topic=%s, value=%f, hour=%d`, t, topic, v64, t.In(moscowLocation).Hour()))
 				}
 			}
 		}

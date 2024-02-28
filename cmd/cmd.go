@@ -31,7 +31,7 @@ func appCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(&params.InfluxDBHost, `influxdb-host`, `127.0.0.1`, `адрес influxdb`)
 	cmd.PersistentFlags().IntVar(&params.InfluxDBPort, `influxdb-port`, 8086, `порт influxdb`)
 	cmd.PersistentFlags().StringVar(&params.InfluxDBToken, `influxdb-token`, `Kp12p4BdYDbE1--wyTfzbiWjQXB62YCAdUwo_tkBBi6Itm59z9Rz751akeEybXGnBCByVchMaj05Kj0mmuMjpA==`, `токен influxdb`)
-	cmd.PersistentFlags().StringVar(&params.InfluxDBOrg, `influxdb-org`, `mqtt`, `токен influxdb`)
+	cmd.PersistentFlags().StringVar(&params.InfluxDBOrg, `influxdb-org`, `mqtt`, `influxdb org`)
 	cmd.PersistentFlags().StringVar(&params.InfluxDBBucket, `influxdb-bucket`, `wirenboard`, `influxdb bucket`)
 	cmd.PersistentFlags().StringVar(&params.InfluxDBMeasurement, `influxdb-measurement`, `map12e`, `influxdb measurement`)
 	cmd.PersistentFlags().DurationVar(&params.CacheTimeout, `cache-timeout`, time.Second*5, `как долго хранить кэш значений по каждому элементу`)
