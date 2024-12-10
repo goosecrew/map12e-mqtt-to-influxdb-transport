@@ -1,0 +1,23 @@
+version: "3.7"
+
+services:
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - 3000:3000
+    volumes:
+      - /mnt/data/grafana:/var/lib/grafana
+    restart: unless-stopped
+  influxdb27:
+    image: influxdb:2.7
+    ports:
+      - 8086:8086
+    volumes:
+      - /mnt/data/influxdb2/data:/var/lib/influxdb2
+      - /mnt/data/influxdb2/shared:/mnt/shared
+      - /mnt/data/influxdb2/config:/etc/influxdb
+    deploy:
+      resources:
+        limits:
+          memory: 1.3GB
+    restart: unless-stopped
