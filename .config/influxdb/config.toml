@@ -1,0 +1,4 @@
+bolt-path = "/var/lib/influxdb/influxd.bolt"
+engine-path = "/var/lib/influxdb/engine"
+http-bind-address = ":8086"
+storage-series-id-set-cache-size = 100
